@@ -17,6 +17,6 @@ obstacles:
   - initial_position: [5,5]
     velocity: 0.0
     moving_range: [[5, 3], [5, 7]]
-  - initial_position: [5, -5]
+  - initial_position: [5, -2]
     velocity: 0.0
     moving_range: [[5, -3], [5, -7]]

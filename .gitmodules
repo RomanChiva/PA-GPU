@@ -1,3 +1,0 @@
-[submodule "mppi_torch"]
-	path = mppi_torch
-	url = git@github.com:tud-airlab/mppi_torch.git
