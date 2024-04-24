@@ -197,18 +197,30 @@ def test_weights():
 import matplotlib.animation as animation
 
 
-class MPPIVisualization:
+class TrajectoryPlotter:
     def __init__(self):
-        self.fig, self.ax = plt.subplots()
-        self.trajectory_line, = self.ax.plot([], [], 'o')
+        plt.ion()  # Turn on interactive mode
+        self.fig, self.ax = plt.subplots(figsize=(10, 10))
+        self.ax.set_title('Trajectories')
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
 
-    def update(self, trajectory):
-        # This function will be called for each new set of trajectories
-        self.trajectory_line.set_data(trajectory[:, 0], trajectory[:, 1])
-        self.ax.relim()
-        self.ax.autoscale_view()
+    def plot(self):
+        # Clear the previous plot
+        self.ax.cla()
 
-    def animate(self, trajectories):
-        # This function starts the animation
-        ani = animation.FuncAnimation(self.fig, self.update, frames=trajectories, blit=True)
-        plt.show()
+        # Iterate over the first dimension of the tensor
+        for i in range(self.trajectories.shape[0]):
+            # Extract the i-th trajectory
+            trajectory = self.trajectories[i]
+
+            # Plot the trajectory
+            self.ax.plot(trajectory[:, 0], trajectory[:, 1], alpha=0.5)
+
+        self.fig.canvas.draw()
+        
+
+    def update(self, new_trajectories):
+        self.trajectories = new_trajectories
+        self.plot()
+        plt.pause(0.01)  # Pause for a short period to allow the plot to update

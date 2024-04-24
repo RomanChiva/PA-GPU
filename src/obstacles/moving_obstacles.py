@@ -26,7 +26,7 @@ class MovingObstacle:
         self.velocity = direction * self.speed * timestep
 
         # Add a small random noise to the displacement
-        noise = np.random.normal(scale=0.01, size=self.velocity.shape)
+        #noise = np.random.normal(scale=0.01, size=self.velocity.shape)
         #self.velocity += noise
 
         # Update the position

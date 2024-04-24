@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from planner.mppi import MPPIConfig
+from mppi_torch.mppi_torch.mppi import MPPIConfig
 from hydra.core.config_store import ConfigStore
 
 from typing import List, Optional

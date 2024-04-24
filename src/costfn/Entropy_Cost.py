@@ -6,7 +6,6 @@ from utils.cubicspline import CubicSpline2D
 import torch
 from sklearn.mixture import GaussianMixture
 import time
-from utils.plotter import LiveBarChart, MPPIVisualization
 from Experiments.msg import Obstacle, ObstacleArray
 
 
@@ -24,30 +23,29 @@ class ObjectiveLegibility(object):
         self.reference_spline = CubicSpline2D(self.x_ref, self.y_ref)
         self.obstacles = obstacles
         self.interface = interface
-        self.plotter = LiveBarChart(['A', 'B'])
-        self.plotter2 = MPPIVisualization()
+        
 
     
 
     # Cost Function for free navigation (Straight to goal)
-    def compute_cost(self, state, u, t, obst):
-        ## The state coming in is a tensor with all the different trajectory samples
-        ## Goal Cost
-
-        self.plotter2.animate(state[:,:,0:2])
+    def compute_cost(self, state):
+       
 
         goal_cost = self.goal_cost(state)
         # Legibility Cost
 
-        entropy_cost = self.entropy_cost(state)
-        entropy_cost = entropy_cost.reshape(-1)
+        #entropy_cost = self.entropy_cost(state)
+        #entropy_cost = entropy_cost.reshape(-1)
 
         # Obstacle Cost
         obstacle_cost = self.obstacle_cost(state)
         obstacle_cost = obstacle_cost.reshape(-1)
 
+        
+        
+
         # Add them
-        return goal_cost + 10*entropy_cost + obstacle_cost
+        return goal_cost + obstacle_cost #+ 10*entropy_cost 
      
     def alpha(self):
 
@@ -163,26 +161,39 @@ class ObjectiveLegibility(object):
         # Propagate the positions of the obstacles K timesteps into the future
         obstacles = self.interface.obstacles
         future_positions = self.propagate_positions(obstacles, horizon)
-
+        
         # Compute the distances between the future positions of the obstacles and the trajectory samples
         distances = self.compute_distances(pos, future_positions)
-        min_distances, _ = distances.min(dim=2)
+        # Print number of elements below collision threshold
         
-        # Check if the future positions of the obstacles are within the robot's safety radius
-        safety_radius = self.cfg.costfn.safety_radius
-        collision_cost = (min_distances < safety_radius).float()*self.cfg.costfn.collision_cost
 
-        # Sum along samples dimension
-        collision_cost_sum = collision_cost.sum(dim=1)
-        print(collision_cost_sum.shape)
-        # Print collision cost sum minimum
-        print(collision_cost_sum.min())
+    
+        # Check if distances are below threshold result in a boolean tensor
+        collision = distances < self.cfg.costfn.safety_radius
+        collision = collision.float()
+        # Print number of elements in array above collision threshold
+        
+        
+        # Multiply to get cost
+        collision_cost = collision*self.cfg.costfn.collision_cost
+        
+
+        # Sum along objects direction
+        collision_cost = collision_cost.sum(-1)
+
+        # Sum along the timesteps direction
+        collision_cost_2 = collision_cost.sum(-1)
+        # Show the number of elements greater than 0
+        # Switch the dimensions to match the shape of the state tensor
+        collision_cost = collision_cost.permute(1, 0)
+
 
         return collision_cost
 
 
 
     def compute_distances(self, samples, obstacles):
+
 
         # Add new axes to match the shapes
         samples = samples.unsqueeze(2)
@@ -198,6 +209,11 @@ class ObjectiveLegibility(object):
 
     def propagate_positions(self, obstacle_array, K):
         # Convert positions and velocities to PyTorch tensors
+        if obstacle_array is None:
+
+            # Return tensor full of Zeros
+            return torch.zeros((K, 1, 2))
+            
         positions = torch.tensor([[
             obstacle.position.position.x,
             obstacle.position.position.y
@@ -210,7 +226,8 @@ class ObjectiveLegibility(object):
 
         # Create a new axis for the timesteps and use broadcasting to propagate the positions
         timesteps = torch.arange(K)[:, None, None]
-        future_positions = positions + velocities * timesteps
+        future_positions = positions + velocities * timesteps*2
 
         return future_positions
 
+    

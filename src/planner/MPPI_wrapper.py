@@ -1,12 +1,11 @@
 import numpy as np
-from planner.mppi import MPPIPlanner
+from mppi_torch.mppi_torch.mppi import MPPIPlanner
 from typing import Callable, Optional
 import io
 import math
 import os
 import yaml
 from yaml.loader import SafeLoader
-
 import torch
 
 torch.set_printoptions(precision=2, sci_mode=False)
@@ -61,28 +60,31 @@ class MPPI_Wrapper(object):
         # state is already saved in the simulator itself, so we ignore it. Note: t is an unused step dependent
         # dynamics variable
 
+        t = 0.2
         v = u[:, 0]
         w = u[:, 1]
         psi = old_state[:, 2]
+        
         trans = torch.stack([
-            0.2 * v * torch.cos(psi),
-            0.2 * v * torch.sin(psi),
-            0.2 * w,
-            0.2 * v
+            t * v * torch.cos(psi),
+            t * v * torch.sin(psi),
+            t * w,
+            t * v
         ], dim=-1)
         state = torch.add(old_state, trans)
         return state, u
         
 
-    def running_cost(self, state, u, t, obst):
+    def running_cost(self, state):
         # Note: again normally mppi passes the state as a parameter in the running cost call, but using isaacgym the
         # state is already saved and accessible in the simulator itself, so we ignore it and pass a handle to the
         # simulator.
-        return self.objective.compute_cost(state, u, t, obst)
+        return self.objective.compute_cost(state)
 
     def compute_action(self, q, qdot, obst=None, obst_tensor=None):
         self.state_place_holder = torch.tensor(q * self.cfg.mppi.num_samples).view(self.cfg.mppi.num_samples, -1)
-        actions, states = self.mppi.command(self.state_place_holder, obst)
+        actions, states = self.mppi.command(self.state_place_holder)
+        
         actions = actions.cpu()
         # loop over the actions and forward propagate the dynamics to get the trajectory
         old_state = self.state_place_holder[0, :].unsqueeze(0)

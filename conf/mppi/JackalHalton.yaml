@@ -15,4 +15,6 @@ rollout_var_discount: 0.95
 sample_null_action: True
 noise_abs_cost: False
 filter_u: True
-calculate_cost_once: True  # If true, running_cost is calculated in one go for the entire rollout
+u_per_command: 0
+return_states: True
+compute_cost_once: True

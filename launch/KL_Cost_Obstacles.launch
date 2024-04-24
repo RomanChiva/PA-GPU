@@ -24,6 +24,9 @@
     <!-- Launch the Jackal controller node --> 
     <node pkg="Experiments" type="KL_CostController.py" name="jackal_controller" output="screen"/>
     
+
+    <!-- Launch the Obstacles -->
+    <node pkg="Experiments" type="moving_obstacles.py" name="obstacles" output="screen"/>
       
     <!-- configured rviz -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find Experiments)/rviz/RVIZ_plus.rviz" output="log"/>

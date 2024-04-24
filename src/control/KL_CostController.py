@@ -18,9 +18,9 @@ import torch
 from omegaconf import OmegaConf
 from interface.InterfacePlus import JackalInterfacePlus
 from geometry_msgs.msg import PoseStamped
-from costfn.Entropy_Cost import ObjectiveLegibility
+from costfn.KL import ObjectiveLegibility
 from utils.config_store import *
-from utils.plotter import LiveBarChart
+from utils.plotter import TrajectoryPlotter
 
 
 
@@ -74,7 +74,7 @@ class Planner_Legibility:
                 robot_velocity = [self.interface.odom_msg.twist.twist.linear.x,
                                   self.interface.odom_msg.twist.twist.linear.y,
                                   self.interface.odom_msg.twist.twist.angular.z]
-
+                
                 pose = PoseStamped()
                 pose.header.frame_id = "map"
                 pose.pose.position.x = self.interface.odom_msg.pose.pose.position.x
@@ -94,6 +94,7 @@ class Planner_Legibility:
                     obst=None
                 )
                 end_time = time.time()
+                print('Time: ', end_time - start_time, 's'  )
                 if step_num > 0:
                     computational_time.append(end_time - start_time)
                 step_num += 1
