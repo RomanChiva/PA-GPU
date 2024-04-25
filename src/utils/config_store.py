@@ -25,7 +25,7 @@ class ObstaclesConfig:
 @dataclass
 class costFn:
     goals = [[20, -5], [20, 5]]
-    goal_index: int = 0
+    
     
 
 

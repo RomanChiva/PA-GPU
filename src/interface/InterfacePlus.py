@@ -105,6 +105,7 @@ class JackalInterfacePlus:
 
         self.timesteps = 0
         self.trajectory = []
+        self.state =None
 
 
 

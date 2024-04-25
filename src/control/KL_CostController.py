@@ -84,7 +84,7 @@ class Planner_Legibility:
                 self.interface.path_publisher.publish(self.interface.path)
 
                 self.interface.trajectory.append([robot_position[0], robot_position[1]])
-
+                self.interface.state = robot_position
 
                 # compute action
                 start_time = time.time()

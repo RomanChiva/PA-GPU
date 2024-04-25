@@ -105,7 +105,7 @@ if __name__ == '__main__':
     # Load Path
     current_dir = os.path.dirname(os.path.realpath(__file__))
     config_dir = os.path.join(current_dir, '..', '..', 'conf', 'obstacles')
-    path = os.path.join(config_dir, 'MovingPointObstacles.yaml')
+    path = os.path.join(config_dir, 'Test.yaml')
 
     
     node = MovingObstaclesNode(path)

@@ -34,8 +34,8 @@ class ObjectiveLegibility(object):
         goal_cost = self.goal_cost(state)
         # Legibility Cost
 
-        #entropy_cost = self.entropy_cost(state)
-        #entropy_cost = entropy_cost.reshape(-1)
+        entropy_cost = self.entropy_cost(state)
+        entropy_cost = entropy_cost.reshape(-1)
 
         # Obstacle Cost
         obstacle_cost = self.obstacle_cost(state)
@@ -45,16 +45,8 @@ class ObjectiveLegibility(object):
         
 
         # Add them
-        return goal_cost + obstacle_cost #+ 10*entropy_cost 
+        return goal_cost + obstacle_cost + 10*entropy_cost 
      
-    def alpha(self):
-
-        grad = self.cfg.costfn.alpha_max/self.cfg.costfn.alpha_steps
-
-        if self.interface.timesteps < self.cfg.costfn.alpha_steps:
-            return self.interface.timesteps * grad
-        else:
-            return self.cfg.costfn.alpha_max
 
     def goal_cost(self, state):
         
