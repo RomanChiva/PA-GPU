@@ -44,7 +44,7 @@ class ObjectiveLegibility(object):
         
 
         # Add them
-        return goal_cost + obstacle_cost + 0.2*KL
+        return goal_cost + obstacle_cost + 0.4*KL
 
     def goal_cost(self, state):
         

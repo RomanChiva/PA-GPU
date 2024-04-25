@@ -147,6 +147,6 @@ def observer_weights_current(interface, cfg, goals):
     # Normalize the weights
     weights = weights / weights.sum()
 
-    #weights = torch.tensor([0.2, 0.8])
+    weights = torch.tensor([0.2, 0.8])
 
     return weights
