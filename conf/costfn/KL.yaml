@@ -1,6 +1,6 @@
 sigma_plan: 0.5
 sigma_pred: 1
-goals: [[20,-0], [20,0]]
+goals: [[20,-5], [20,5]]
 goal_index: 0
 monte_carlo_samples: 100
 alpha_steps: 100

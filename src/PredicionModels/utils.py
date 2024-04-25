@@ -144,5 +144,9 @@ def observer_weights_current(interface, cfg, goals):
 
     # Compute weights
     weights = torch.exp(V_g - distance_path - distance_goals)
+    # Normalize the weights
+    weights = weights / weights.sum()
+
+    #weights = torch.tensor([0.2, 0.8])
 
     return weights

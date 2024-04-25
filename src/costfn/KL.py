@@ -9,6 +9,7 @@ import time
 from PredicionModels.utils import *
 from PredicionModels.RationalAction import pred_model_goal_oriented
 from PredicionModels.ConstantVel import Constant_velocity_prediction
+from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
 
 class ObjectiveLegibility(object):
 
@@ -38,10 +39,12 @@ class ObjectiveLegibility(object):
         # KL Cost
         KL = self.KL_cost(state)
         KL = KL.reshape(-1)
+        # Clamp KL to always be below the maximum value from goal cost
+        KL = torch.clamp(KL, 0, torch.max(goal_cost))
         
 
         # Add them
-        return goal_cost + obstacle_cost + 0.6*KL
+        return goal_cost + obstacle_cost + 0.2*KL
 
     def goal_cost(self, state):
         
@@ -59,8 +62,7 @@ class ObjectiveLegibility(object):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2] # Get only the positions from state    
-        prediction, weights = Constant_velocity_prediction(self.interface, self.cfg)
-        
+        prediction, weights = goal_oriented_predictions(self.interface, self.cfg)
         # Generate Samples
 
         samples_pred = GenerateSamples(prediction, self.cfg.costfn.sigma_pred, weights, self.cfg.costfn.monte_carlo_samples)
