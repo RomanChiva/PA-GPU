@@ -7,7 +7,7 @@ import torch
 from sklearn.mixture import GaussianMixture
 import time
 from PredicionModels.utils import *
-from PredicionModels.RationalAction import pred_model_goal_oriented
+from PredicionModels.RationalAction import RationalAction
 from PredicionModels.ConstantVel import Constant_velocity_prediction
 from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
 
@@ -37,14 +37,14 @@ class ObjectiveLegibility(object):
         obstacle_cost = obstacle_cost.reshape(-1)
 
         # KL Cost
-        KL = self.KL_cost(state)
+        KL = self.KL_Cost(state)
         KL = KL.reshape(-1)
         # Clamp KL to always be below the maximum value from goal cost
         KL = torch.clamp(KL, 0, torch.max(goal_cost))
-        
+     
 
         # Add them
-        return goal_cost + obstacle_cost + 0.4*KL
+        return goal_cost + obstacle_cost + 2*KL
 
     def goal_cost(self, state):
         
@@ -58,15 +58,39 @@ class ObjectiveLegibility(object):
         return goal_cost
     
 
-    def KL_cost(self, state):
+
+
+
+    def KL_Cost(self, state):
+
+        ## Specify Distributions
+        plan_means = state[:, :, 0:2]
+        prediction, weights = RationalAction(state, self.interface, self.cfg)
+
+        # Generate Samples
+        samples = GenerateSamplesReparametrizationTrick(plan_means, self.cfg.costfn.sigma_plan, self.cfg.costfn.monte_carlo_samples)
+        
+        # Score
+        score_pred = score_GMM(samples, prediction, self.cfg.costfn.sigma_pred, weights)
+        score_plan = multivariate_normal_log_prob(samples, plan_means, self.cfg.costfn.sigma_plan)
+        # Compute KL Divergence
+        kl_div = torch.mean(score_plan - score_pred, dim=0)
+
+        kl_div = kl_div.permute(1, 0)
+        
+        return kl_div
+
+
+
+    def KL_Cost_reverse(self, state):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2] # Get only the positions from state    
-        prediction, weights = goal_oriented_predictions(self.interface, self.cfg)
+        prediction, weights = RationalAction(state, self.interface, self.cfg)
         # Generate Samples
 
         samples_pred = GenerateSamples(prediction, self.cfg.costfn.sigma_pred, weights, self.cfg.costfn.monte_carlo_samples)
-        #print(samples_pred.shape)
+        
         # Score
         score_pred = score_GMM(samples_pred, prediction, self.cfg.costfn.sigma_pred, weights)
         score_plan = multivariate_normal_log_prob(samples_pred, plan_means, self.cfg.costfn.sigma_plan)
@@ -76,7 +100,9 @@ class ObjectiveLegibility(object):
 
         kl_div = kl_div.permute(1, 0)
         return kl_div
-
+    
+    # Reverse Order
+    
 
 
     def obstacle_cost(self, state):

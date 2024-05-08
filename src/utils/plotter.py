@@ -224,3 +224,92 @@ class TrajectoryPlotter:
         self.trajectories = new_trajectories
         self.plot()
         plt.pause(0.01)  # Pause for a short period to allow the plot to update
+
+
+
+from scipy.stats import multivariate_normal
+
+def plot_gmm(means, sigma, weights):
+
+
+    # Convert All inputs to numpy arrays
+    means = np.array(means)
+    weights = np.array(weights)
+
+      # Find the minimum and maximum values in the means array for each dimension
+    min_val_x = np.amin(means[:,:,0])
+    max_val_x = np.amax(means[:,:,0])
+    min_val_y = np.amin(means[:,:,1])
+    max_val_y = np.amax(means[:,:,1])
+
+    # Create a grid of points
+    x = np.linspace(min_val_x -2, max_val_x +2, 100)
+    y = np.linspace(min_val_y -2, max_val_y +2, 100)
+    X, Y = np.meshgrid(x, y)
+
+    covs = [np.eye(2) * sigma for _ in means]
+  
+    Z = np.zeros_like(X)
+
+    for i, weight in enumerate(weights):
+        means_i = means[:,i,:]
+        for mean, cov in zip(means_i, covs):
+            rv = multivariate_normal(mean=mean, cov=cov)
+            Z += weight * rv.pdf(np.dstack((X, Y)))
+
+
+    # Create a 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the GMM as a surface plot
+    ax.plot_surface(X, Y, Z, cmap='viridis')
+
+    # Set the vertical axis to 1
+    ax.set_zlim(0, 1)
+
+    # Show the plot
+    plt.show()
+
+
+
+def plot_gmm(means, sigma, weights, trajectory=None):
+
+    # Clear Plot 
+    plt.clf()
+    # Convert All inputs to numpy arrays
+    means = np.array(means)
+    weights = np.array(weights)
+
+    # Find the minimum and maximum values in the means array for each dimension
+    min_val_x = np.amin(means[:,:,0])
+    max_val_x = np.amax(means[:,:,0])
+    min_val_y = np.amin(means[:,:,1])
+    max_val_y = np.amax(means[:,:,1])
+
+    # Create a grid of points
+    x = np.linspace(min_val_x -2, max_val_x +2, 100)
+    y = np.linspace(min_val_y -2, max_val_y +2, 100)
+    X, Y = np.meshgrid(x, y)
+
+    covs = [np.eye(2) * sigma for _ in means]
+  
+    Z = np.zeros_like(X)
+
+    for i, weight in enumerate(weights):
+        means_i = means[:,i,:]
+        for mean, cov in zip(means_i, covs):
+            rv = multivariate_normal(mean=mean, cov=cov)
+            Z += weight * rv.pdf(np.dstack((X, Y)))
+
+    # Create a 2D heatmap
+    plt.imshow(Z, extent=(np.amin(x), np.amax(x), np.amin(y), np.amax(y)), origin='lower', cmap='viridis')
+
+    # Plot the trajectory on top of the heatmap
+    if trajectory is not None:
+        trajectory = trajectory.numpy()  # Convert tensor to numpy array
+        plt.plot(trajectory[:,0], trajectory[:,1], color='red')
+
+    plt.colorbar()
+    plt.show(block=False)
+    plt.pause(0.1)

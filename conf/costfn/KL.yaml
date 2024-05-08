@@ -1,7 +1,7 @@
-sigma_plan: 0.5
-sigma_pred: 1
-goals: [[20,-5], [20,5]]
-goal_index: 0
+sigma_plan: 0.05
+sigma_pred: 0.2
+goals: [[20,5], [20,-5]]
+goal_index: 1
 monte_carlo_samples: 100
 alpha_steps: 100
 alpha_max: 0

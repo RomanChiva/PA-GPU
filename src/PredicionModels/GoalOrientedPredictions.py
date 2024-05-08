@@ -1,11 +1,11 @@
 import torch
 from PredicionModels.utils import *
 
-def goal_oriented_predictions(interface, cfg):
+def goal_oriented_predictions(interface, cfg, return_original=False):
 
-    v = 1
+    v = 1.4
     timestep = 0.2
-    max_w = cfg.mppi.u_max[1]
+    max_w = 20*cfg.mppi.u_max[1]
     goals = torch.tensor(cfg.costfn.goals).float()
 
     
@@ -33,20 +33,22 @@ def goal_oriented_predictions(interface, cfg):
     displacement = displacement * torch.arange(1,cfg.mppi.horizon+1).unsqueeze(-1).unsqueeze(-1).float()
     
     # Add displacement to position
-    pred_goals = position + displacement
-    
+    pred_goals_original = position + displacement
+
 
     # Convert to Right Format (n_goals(1),Samples, horizon , nx)
-    pred_goals = pred_goals.permute(1,0,2)
+    pred_goals = pred_goals_original.permute(1,0,2)
     pred_goals = pred_goals.unsqueeze(1).repeat(1,cfg.mppi.num_samples, 1, 1)
     
     
     # Weights
-    weights = observer_weights_current(interface, cfg, goals)
-    print(weights)
+    weights_original = observer_weights_current(interface, cfg, goals)
+    
     # Tensor of ones with shape (K,T,1)
-    weights = weights.unsqueeze(0).unsqueeze(0).repeat(cfg.mppi.num_samples, cfg.mppi.horizon, 1)
-
-    return pred_goals, weights
+    weights = weights_original.unsqueeze(0).unsqueeze(0).repeat(cfg.mppi.num_samples, cfg.mppi.horizon, 1)
+    if return_original:
+        return pred_goals_original, weights_original
+    else:
+        return pred_goals, weights
 
     

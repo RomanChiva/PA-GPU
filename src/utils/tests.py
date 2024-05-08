@@ -3,78 +3,69 @@ import time
 
 
 
-def p_distrib(goals, position, traj_len, states, rationality):
-
-    ## Mode 1
-
-    optimal1 = torch.linalg.norm(goals[0])
-    position_to_goal_magnitude1 = torch.linalg.norm(position - goals[0])
-    dist_to_goal = states + position - goals[0]
-    dist_to_goal = torch.linalg.norm(dist_to_goal, axis=2)
-
-    ## Weight Mode 1
-    w1 = torch.exp(rationality*(optimal1 - traj_len -position_to_goal_magnitude1))
-
-    ## Distribution Mode 1 
-    p1 = torch.exp(rationality*(optimal1 - traj_len - dist_to_goal))
-    
-
-    ## Mode 2
-
-    optimal2 = torch.linalg.norm(goals[1])
-    position_to_goal_magnitude2 = torch.linalg.norm(position - goals[1])
-    dist_to_goal = states + position - goals[1]
-    dist_to_goal = torch.linalg.norm(dist_to_goal, axis=2)
-
-    ## Weight Mode 2
-    w2 = torch.exp(rationality*(optimal2 - traj_len -position_to_goal_magnitude2))
-
-    ## Distribution Mode 2
-    p2 = torch.exp(rationality*(optimal2 - traj_len - dist_to_goal))
-
-
-    ## Nomralize the distribution
-
-    p = w1*p1 + w2*p2
-    p = p/p.sum()
-
-
-    return p
-
-
-
-range_x = [-3, 3]
-range_y = [0, 5]
-
-## Create a 3D tensor where the first two dimensions are the grid and the third dimension is the position x, y
-## The grid is a 2D grid that represents the environment
-grid = torch.zeros(100, 100, 2)
-grid[:,:,0] = torch.linspace(range_x[0], range_x[1], 100).view(1, -1).repeat(100, 1)
-grid[:,:,1] = torch.linspace(range_y[0], range_y[1], 100).view(-1, 1).repeat(1, 100)
-
-goals = torch.tensor([[-5, 10], [5, 10]]).float()
-
-position = torch.tensor([0, 1]).float()
-
-traj_len = 1
-
-rationality = 1
-
-p = p_distrib(goals, position, traj_len, grid, rationality)
-
-
-# Calculate entropy of P 
-entropy = -torch.sum(p*torch.log2(p))
-print(entropy)
-
-
-# Plot the distribution as a 3D surface
-
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from scipy.stats import multivariate_normal
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.plot_surface(grid[:,:,0].numpy(), grid[:,:,1].numpy(), p.numpy())
 
-plt.show()
+def plot_gmm(means, sigma, weights):
+    # Create a grid of points
+    x = np.linspace(-5, 20, 100)
+    y = np.linspace(-5, 20, 100)
+    X, Y = np.meshgrid(x, y)
+
+    covs = [np.eye(2) * sigma for _ in means]
+  
+    Z = np.zeros_like(X)
+
+    for i, weight in enumerate(weights):
+        means_i = means[:,i,:]
+        for mean, cov in zip(means_i, covs):
+            rv = multivariate_normal(mean=mean, cov=cov)
+            Z += weight * rv.pdf(np.dstack((X, Y)))
+
+
+    # Create a 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the GMM as a surface plot
+    ax.plot_surface(X, Y, Z, cmap='viridis')
+
+    # Set the vertical axis to 1
+    ax.set_zlim(0, 1)
+
+    # Show the plot
+    plt.show()
+
+
+
+
+num_steps = 20
+
+
+# Define the start, end, and number of steps
+start = np.array([0.5, 0.5])
+end = np.array([10, 10])
+
+
+# Create a trajectory from start to end
+trajectory1 = np.linspace(start, end, num_steps)
+
+start2 = np.array([0, 0.5])
+end2 = np.array([0, 10])
+
+
+# Create a trajectory from start to end
+trajectory2 = np.linspace(start2, end2, num_steps)
+
+# Comnbine both trajectories in a new dimension to make tarray shape 20x2x2
+trajectory = np.stack([trajectory1, trajectory2], axis=1)
+
+# Define the parameters of the two Gaussian components
+means = trajectory1
+sigma = 2
+weights = [1]
+
+plot_gmm(means, sigma, weights)

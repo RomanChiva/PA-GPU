@@ -28,7 +28,9 @@ def Compute_Weights_Goals(pos, goals, interface):
         V_g_0 = torch.linalg.norm(goal)
 
         # Compute weight
-        weight = torch.exp(V_g_0 - path_lengths - magnitude_goal)
+        # Raationality parameter 
+        r = 6
+        weight = torch.exp(r*(V_g_0 - path_lengths - magnitude_goal))
 
         # Add weight to list
         weights_list.append(weight)
