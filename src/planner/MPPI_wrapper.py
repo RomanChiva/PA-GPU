@@ -1,5 +1,5 @@
 import numpy as np
-from mppi_torch.mppi_torch.mppi import MPPIPlanner
+from mppi_torch.mppi import MPPIPlanner
 from typing import Callable, Optional
 import io
 import math
