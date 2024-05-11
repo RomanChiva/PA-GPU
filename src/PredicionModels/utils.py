@@ -3,9 +3,9 @@ import numpy as np
 
 
 def compute_path_length(path):
-    path_diff = np.diff(path, axis=0)
-    path_length = np.linalg.norm(path_diff, axis=1).sum()
-    return path_length
+    path_diff = path[1:] - path[:-1]
+    path_length = torch.norm(path_diff, dim=1).sum()
+    return path_length.item()
 
 
 def compute_path_lengths(paths, position):
@@ -128,22 +128,21 @@ def multivariate_normal_log_prob(x, means, sigma):
     return log_prob
 
 
-def observer_weights_current(interface, cfg, goals):
+def observer_weights_current(traj, cfg, goals):
     
     # Get position XY and make it tensor
-    position =  torch.tensor(interface.state[0:2], device=cfg.mppi.device)
-    # Find distance to goals
-    distance_goals = torch.norm(goals - position, dim=-1)
 
-    # Length of trajectory so fat
-    traj = interface.trajectory
+    # Find distance to goals
+    distance_goals = torch.norm(goals - traj[-1], dim=-1)
+
     distance_path = compute_path_length(traj)
 
     # Find magnitude of goals from [0,0]
     V_g = torch.norm(goals, dim=-1)
 
     # Compute weights
-    weights = torch.exp(V_g - distance_path - distance_goals)
+    weights = torch.exp(cfg.costfn.rationality*(V_g - distance_path - distance_goals))
+    
     # Normalize the weights
     weights = weights / weights.sum()
 

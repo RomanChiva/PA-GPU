@@ -100,7 +100,7 @@ class JackalInterfacePlus:
         #self.reset_simulation_pub = rospy.Publisher('/lmpcc/reset_environment', EmptyMsg, queue_size=1)
 
         # Set the rate at which to publish commands (in Hz)
-        self.frequency = 10
+        self.frequency = 20
         self.rate = rospy.Rate(self.frequency)  # 10 Hz
 
         self.timesteps = 0

@@ -1,14 +1,13 @@
 import torch
 from PredicionModels.utils import *
 
-def Compute_Weights_Goals(pos, goals, interface):
+def Compute_Weights_Goals(pos, goals, traj):
     pos = pos.permute(1,0,2)
 
     # Initialize a list to store the weights for each goal
     weights_list = []
 
     # Find distance travelled so far
-    traj = interface.trajectory
     distance = compute_path_length(traj)
 
     path_lengths = compute_path_lengths(pos, torch.tensor(traj[-1]))
@@ -29,7 +28,7 @@ def Compute_Weights_Goals(pos, goals, interface):
 
         # Compute weight
         # Raationality parameter 
-        r = 6
+        r = 1
         weight = torch.exp(r*(V_g_0 - path_lengths - magnitude_goal))
 
         # Add weight to list

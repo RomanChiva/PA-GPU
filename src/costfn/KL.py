@@ -17,7 +17,7 @@ class ObjectiveLegibility(object):
         # Create two possible goals used in pred_model
         self.cfg = cfg
         self.goal_index = cfg.costfn.goal_index
-        self.goals = torch.tensor(self.cfg.costfn.goals).float()
+        self.goals = torch.tensor(self.cfg.costfn.goals, device=self.cfg.mppi.device).float()
         self.v_ref = torch.tensor(cfg.v_ref, device=cfg.mppi.device)
         self.x_ref = np.array([0, 3, 6, 9, 12, 15, 18, 21, 30, 34, 38])
         self.y_ref = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -30,6 +30,18 @@ class ObjectiveLegibility(object):
 
     # Cost Function for free navigation (Straight to goal)
     def compute_cost(self, state):
+
+
+         ## Send all tensors we need to GPU
+        self.trajectory = torch.tensor(self.interface.trajectory, device=self.cfg.mppi.device)
+        self.position = self.trajectory[-1]
+        self.psi = torch.tensor(self.interface.state[2], device=self.cfg.mppi.device)
+        obstacles = self.interface.obstacles
+        # The function already picks a device
+        self.obstacle_predictions = self.propagate_positions(obstacles, self.cfg.mppi.horizon)
+
+
+
         ## The state coming in is a tensor with all the different trajectory samples
         ## Goal Cost
         goal_cost = self.goal_cost(state) 
@@ -44,10 +56,9 @@ class ObjectiveLegibility(object):
      
 
         # Add them
-        return goal_cost + obstacle_cost + 2*KL
+        return goal_cost + obstacle_cost + self.cfg.costfn.KL_weight*KL
 
     def goal_cost(self, state):
-        
 
         state_goal = state.permute(1, 0, 2)
         # Now reshape to (T*K, nx)
@@ -59,13 +70,11 @@ class ObjectiveLegibility(object):
     
 
 
-
-
     def KL_Cost(self, state):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2]
-        prediction, weights = RationalAction(state, self.interface, self.cfg)
+        prediction, weights = goal_oriented_predictions(self.goals, self.trajectory, self.psi, self.cfg)
 
         # Generate Samples
         samples = GenerateSamplesReparametrizationTrick(plan_means, self.cfg.costfn.sigma_plan, self.cfg.costfn.monte_carlo_samples)
@@ -109,13 +118,9 @@ class ObjectiveLegibility(object):
         
 
         pos = state[:, :, 0:2]
-        horizon = pos.shape[1]
-        # Propagate the positions of the obstacles K timesteps into the future
-        obstacles = self.interface.obstacles
-        future_positions = self.propagate_positions(obstacles, horizon)
         
         # Compute the distances between the future positions of the obstacles and the trajectory samples
-        distances = self.compute_distances(pos, future_positions)
+        distances = self.compute_distances(pos, self.obstacle_predictions)
         # Print number of elements below collision threshold
         
 
@@ -133,10 +138,6 @@ class ObjectiveLegibility(object):
         # Sum along objects direction
         collision_cost = collision_cost.sum(-1)
 
-        # Sum along the timesteps direction
-        collision_cost_2 = collision_cost.sum(-1)
-        # Show the number of elements greater than 0
-        # Switch the dimensions to match the shape of the state tensor
         collision_cost = collision_cost.permute(1, 0)
 
 
@@ -159,22 +160,23 @@ class ObjectiveLegibility(object):
         
         
 
+
     def propagate_positions(self, obstacle_array, K):
         # Convert positions and velocities to PyTorch tensors
         if obstacle_array is None:
 
             # Return tensor full of Zeros
-            return torch.zeros((K, 1, 2))
+            return torch.zeros((K, 1, 2), device=self.cfg.mppi.device)
             
         positions = torch.tensor([[
             obstacle.position.position.x,
             obstacle.position.position.y
-        ] for obstacle in obstacle_array.obstacles])
+        ] for obstacle in obstacle_array.obstacles], device=self.cfg.mppi.device)
 
         velocities = torch.tensor([[
             obstacle.velocity.linear.x,
             obstacle.velocity.linear.y
-        ] for obstacle in obstacle_array.obstacles])
+        ] for obstacle in obstacle_array.obstacles], device=self.cfg.mppi.device)
 
         # Create a new axis for the timesteps and use broadcasting to propagate the positions
         timesteps = torch.arange(K)[:, None, None]

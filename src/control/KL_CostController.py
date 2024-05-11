@@ -21,7 +21,7 @@ from geometry_msgs.msg import PoseStamped
 from costfn.KL import ObjectiveLegibility
 #from costfn.Entropy_Cost import ObjectiveLegibility
 from utils.config_store import *
-from utils.plotter import plot_gmm
+#from utils.plotter import plot_gmm
 from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
 
 
@@ -89,14 +89,22 @@ class Planner_Legibility:
                 self.interface.state = robot_position
 
                 # compute action
-                start_time = time.time()
-                action, plan, states = self.mppi_planner.compute_action(
-                    q=robot_position,
-                    qdot=robot_velocity,
-                    obst=None
-                )
-                end_time = time.time()
-                print('Time: ', end_time - start_time, 's'  )
+
+                if step_num == 0 and self.cfg.mppi.warm_start:
+                    for _ in range(self.cfg.mppi.warm_start_steps):
+                        action, plan, states = self.mppi_planner.compute_action(
+                        q=robot_position,
+                        qdot=robot_velocity,
+                        obst=None)
+                else: 
+                    start_time = time.time()
+                    action, plan, states = self.mppi_planner.compute_action(
+                        q=robot_position,
+                        qdot=robot_velocity,
+                        obst=None)
+                    end_time = time.time()
+                    print('Time: ', end_time - start_time, 's')
+
                 plans.append(plan.numpy())
                 if step_num > 0:
                     computational_time.append(end_time - start_time)
@@ -105,10 +113,10 @@ class Planner_Legibility:
                 # visualize trajectory
                 self.interface.visualize_trajectory(plan)
                 # Plot Plan and predictions 
-                pred, weights = goal_oriented_predictions(self.interface, self.cfg, return_original=True)
+                #pred, weights = goal_oriented_predictions(self.interface, self.cfg, return_original=True)
                 #print(pred.shape, weights.shape, plan.shape)
-                if step_num % 50 == 0:
-                    plot_gmm(pred, self.cfg.costfn.sigma_pred, weights, trajectory=plan)
+                #if step_num % 50 == 0:
+                    #plot_gmm(pred, self.cfg.costfn.sigma_pred, weights, trajectory=plan)
                 # actuate robot and sleep
                 self.interface.actuate(action)
 
@@ -122,11 +130,11 @@ class Planner_Legibility:
                     step_num = 0
                     self.mppi_planner = MPPI_Wrapper(self.cfg, self.objective)
                     # Save a copy of Plans in the plans folder
-                    print(np.array(plans).shape, 'plans shape')
-                    np.save('/home/roman/ROS/catkin_ws/src/Experiments/src/utils/plans_KL2.npy', np.array(plans))
+                    #print(np.array(plans).shape, 'plans shape')
+                    #np.save('/home/roman/ROS/catkin_ws/src/Experiments/src/utils/plans_KL2.npy', np.array(plans))
                     plans = []
                     #break
-                    sys.exit(0)
+                    #sys.exit(0)
 
 
 

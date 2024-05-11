@@ -2,22 +2,15 @@ import torch
 from PredicionModels.utils import *
 from PredicionModels.Goal_weights import Compute_Weights_Goals
 
-def RationalAction(state, interface, cfg):
+def RationalAction(state, goals, traj, cfg):
 
     step = 0.2
     # Get velocity -> V_max
-    goals = torch.tensor(cfg.costfn.goals).float()
     velocity =  0.8*cfg.mppi.u_max[0]*step
     psi_max =   cfg.mppi.u_max[1]*step
     # #### All these steps are to make sure the predictions align, and avoid being 1 timestep ahead#####
     pos = state[:, :, 0:2]
-    # # Create a tensor with the current position repeated K times
-    # current_position = position.repeat(pos.shape[1], 1)
-    # ## Stack this at first index of pos
-    # pos = torch.cat([current_position.unsqueeze(0), pos], dim=0)
-    # # Remove the last element of each trajectory to make it a T-1 trajectory
-    # pos = pos[:-1, :, :]
-    ######################################################
+   
     pred_goals = []
 
     # Loop over each goal
@@ -39,7 +32,7 @@ def RationalAction(state, interface, cfg):
         pred_goals.append(pred_goal)
 
     # Find weights
-    weights = Compute_Weights_Goals(pos, goals, interface)
+    weights = Compute_Weights_Goals(pos, goals, traj)
 
     # Convert all to floar32
     predictions = torch.stack(pred_goals,dim=0)

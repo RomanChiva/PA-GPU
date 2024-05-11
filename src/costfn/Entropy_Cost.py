@@ -31,12 +31,21 @@ class ObjectiveLegibility(object):
     def compute_cost(self, state):
        
 
+        ## Send all tensors we need to GPU
+        self.trajectory = torch.tensor(self.interface.trajectory, device=self.cfg.mppi.device)
+        self.position = torch.tensor([self.interface.odom_msg.pose.pose.position.x,
+                                self.interface.odom_msg.pose.pose.position.y], device=self.cfg.mppi.device)
+        obstacles = self.interface.obstacles
+        # The function already picks a device
+        self.obstacle_predictions = self.propagate_positions(obstacles, self.cfg.mppi.horizon)
+        
+
         goal_cost = self.goal_cost(state)
         # Legibility Cost
 
         entropy_cost = self.entropy_cost(state)
         entropy_cost = entropy_cost.reshape(-1)
-
+        
         # Obstacle Cost
         obstacle_cost = self.obstacle_cost(state)
         obstacle_cost = obstacle_cost.reshape(-1)
@@ -86,7 +95,7 @@ class ObjectiveLegibility(object):
         magnitude_goal2 = torch.linalg.norm(vector_goal2, axis=2)
 
         # Find distance travelled so far
-        distance = self.compute_path_length(self.interface.trajectory)
+        distance = self.compute_path_length(self.trajectory)
         
 
         path_lengths = self.compute_path_lengths(pos)
@@ -116,19 +125,17 @@ class ObjectiveLegibility(object):
 
 
     def compute_path_length(self, path):
-        path_diff = np.diff(path, axis=0)
-        path_length = np.linalg.norm(path_diff, axis=1).sum()
-        return path_length
+        
+        path_diff = path[1:] - path[:-1]
+        path_length = torch.norm(path_diff, dim=1).sum()
+        return path_length.item()
     
 
     def compute_path_lengths(self, paths):
 
 
-        # Get position XY and make it tensor
-        position =  torch.tensor([self.interface.odom_msg.pose.pose.position.x,
-                                self.interface.odom_msg.pose.pose.position.y], device=self.cfg.mppi.device)
         # Subtract the current position from the rest of the path
-        paths = paths - position.unsqueeze(0).unsqueeze(0)
+        paths = paths - self.position.unsqueeze(0).unsqueeze(0)
 
         # append row of zeros to the beginning of the path
         paths = torch.cat([torch.zeros_like(paths[0:1]), paths], dim=0)
@@ -149,13 +156,9 @@ class ObjectiveLegibility(object):
         
 
         pos = state[:, :, 0:2]
-        horizon = pos.shape[1]
-        # Propagate the positions of the obstacles K timesteps into the future
-        obstacles = self.interface.obstacles
-        future_positions = self.propagate_positions(obstacles, horizon)
-        
+
         # Compute the distances between the future positions of the obstacles and the trajectory samples
-        distances = self.compute_distances(pos, future_positions)
+        distances = self.compute_distances(pos, self.obstacle_predictions)
         # Print number of elements below collision threshold
         
 
@@ -173,10 +176,6 @@ class ObjectiveLegibility(object):
         # Sum along objects direction
         collision_cost = collision_cost.sum(-1)
 
-        # Sum along the timesteps direction
-        collision_cost_2 = collision_cost.sum(-1)
-        # Show the number of elements greater than 0
-        # Switch the dimensions to match the shape of the state tensor
         collision_cost = collision_cost.permute(1, 0)
 
 
@@ -190,6 +189,7 @@ class ObjectiveLegibility(object):
         # Add new axes to match the shapes
         samples = samples.unsqueeze(2)
         obstacles = obstacles.unsqueeze(0)
+        
 
         # Compute the distances using broadcasting
         distances = torch.sqrt(((samples - obstacles)**2).sum(-1))
@@ -204,17 +204,17 @@ class ObjectiveLegibility(object):
         if obstacle_array is None:
 
             # Return tensor full of Zeros
-            return torch.zeros((K, 1, 2))
+            return torch.zeros((K, 1, 2), device=self.cfg.mppi.device)
             
         positions = torch.tensor([[
             obstacle.position.position.x,
             obstacle.position.position.y
-        ] for obstacle in obstacle_array.obstacles])
+        ] for obstacle in obstacle_array.obstacles], device=self.cfg.mppi.device)
 
         velocities = torch.tensor([[
             obstacle.velocity.linear.x,
             obstacle.velocity.linear.y
-        ] for obstacle in obstacle_array.obstacles])
+        ] for obstacle in obstacle_array.obstacles], device=self.cfg.mppi.device)
 
         # Create a new axis for the timesteps and use broadcasting to propagate the positions
         timesteps = torch.arange(K)[:, None, None]
