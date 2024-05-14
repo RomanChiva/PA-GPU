@@ -10,6 +10,7 @@ from Experiments.msg import AgentState
 from Experiments.srv import ServerRequest
 from std_srvs.srv import Empty as EmptySrv
 from std_msgs.msg import Empty as EmptyMsg
+from std_msgs.msg import Bool
 from sensor_msgs.msg import PointCloud
 from robot_localization.srv import SetPose
 from std_msgs.msg import ColorRGBA, Float64, String
@@ -73,10 +74,10 @@ class AgentInterfacePlus:
         ## SUbscribe to service send ID and receive obstacles/predictions
         self.server_client = rospy.ServiceProxy('/get_state_histories', ServerRequest)
 
-        # service clients for resetting
-        self.reset_simulation_client = rospy.ServiceProxy('/gazebo/reset_world', EmptySrv)
-        self.reset_ekf_client = rospy.ServiceProxy('/set_pose', SetPose)
-        #self.reset_simulation_pub = rospy.Publisher('/lmpcc/reset_environment', EmptyMsg, queue_size=1)
+        # SUbscriber to reset_sim
+        rospy.Subscriber('/restart_sim', Bool, self.reset_callback)
+        self.reset_sim = False
+        
 
         # Set the rate at which to publish commands (in Hz)
         self.frequency = 10
@@ -258,11 +259,12 @@ class AgentInterfacePlus:
 
     def reset_env(self):
         # Call the service to reset the simulation
-        self.reset_simulation_client()
-        reset_msg = EmptyMsg()
+        #self.reset_simulation_client()
+        #reset_msg = EmptyMsg()
 
         # Publish the Empty message to the specified topic
         #self.reset_simulation_pub.publish(reset_msg)
+        pass
 
     def actuate(self, action):
         self.vel_cmd.linear.x  = action[0].item()
@@ -276,3 +278,6 @@ class AgentInterfacePlus:
     def obstacle_callback(self, msg):
 
         self.obstacles = msg
+
+    def reset_callback(self, msg):
+        self.reset_sim = msg.data

@@ -2,7 +2,7 @@ defaults:
   - mppi: jackal
   - obstacles: point_robot_obstacles
   - costfn: KL
-  - multi_agent: test_scenario
+  - multi_agent: swapping1
 
 goal: [20, 0]
 v_ref: 0.5

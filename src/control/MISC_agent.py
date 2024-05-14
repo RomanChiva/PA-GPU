@@ -36,6 +36,7 @@ class MISC_Agent:
         
         self.interface = AgentInterfacePlus(self.cfg)
         self.agent_id = self.interface.ID
+        print('Hello from Agent: ', self.agent_id)
         
         rospy.sleep(1)
         
@@ -127,20 +128,26 @@ class MISC_Agent:
 
 
             # check if the target goal is reached
-            if np.linalg.norm(np.array(robot_position[0:2]) - np.array(self.cfg.costfn.goals[self.cfg.costfn.goal_index])) < 0.7:
-                self.interface.reset_env()
+            if self.interface.reset_sim:
+                #self.interface.reset_env()
                 print("planning computational time is: ", (np.sum(computational_time) / step_num) * 1000, " ms")
+                
                 computational_time = []
                 self.interface.timesteps = 0
                 self.interface.trajectory = []
                 step_num = 0
                 self.mppi_planner = MPPI_Wrapper(self.cfg, self.objective)
+                
                 # Save a copy of Plans in the plans folder
                 #print(np.array(plans).shape, 'plans shape')
                 #np.save('/home/roman/ROS/catkin_ws/src/Experiments/src/utils/plans_KL2.npy', np.array(plans))
                 plans = []
+                # Set state back to initital state
+                self.state = torch.tensor(self.cfg.multi_agent.starts[self.agent_id], device=self.cfg.mppi.device).float()
                 #break
                 #sys.exit(0)
+                # Sleep for 1 second
+                rospy.sleep(1)
 
 
 

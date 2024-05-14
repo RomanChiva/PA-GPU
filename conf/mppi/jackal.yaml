@@ -1,9 +1,9 @@
 defaults:
   - base_mppi
 
-mppi_mode: "simple"  # halton-spline, simple
-sampling_method: "random"   # halton, random
-num_samples: 800
+mppi_mode: "halton-spline"  # halton-spline, simple
+sampling_method: "halton"   # halton, random
+num_samples: 300
 horizon: 20                 # At least 12 for Halton Sampling
 device: "cpu"
 lambda_: 0.5  # Invesrse temperature

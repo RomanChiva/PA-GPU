@@ -1,19 +1,41 @@
 #!/usr/bin/python3
 
+
+
+import sys
+import os
+# Get the parent directory of the current script
+parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+# Add the parent directory to the Python path
+sys.path.append(parent_dir)
+
+# Import this to be able to use Hydra Files
+from utils.config_store import *
+
 import rospy
 from Experiments.msg import AgentState, Tensor3D
 from Experiments.srv import ServerRequest, ServerRequestResponse
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import ColorRGBA
 from std_msgs.msg import Float32MultiArray, Int32MultiArray
+from std_msgs.msg import Bool
 from collections import deque
 import torch
 import time
 from geometry_msgs.msg import Quaternion
 from tf.transformations import quaternion_from_euler
+from omegaconf import OmegaConf
+from hydra.experimental import initialize, compose
+
 
 class ServerNode:
     def __init__(self):
+
+
+        
+        config = self.load_config()
+        self.cfg = OmegaConf.to_object(config)
+
         rospy.init_node('server_node')
         
         self.num_agents = rospy.get_param('~num_agents', 10)
@@ -23,15 +45,24 @@ class ServerNode:
         # Interactive: Publisher, subscriber anbd Service
         self.marker_pub = rospy.Publisher('multi_agent_viz', MarkerArray, queue_size=10)
         rospy.Subscriber('/agent_states', AgentState, self.state_callback, queue_size=10)
-        
         rospy.Service('/get_state_histories', ServerRequest, self.handle_get_state_histories)
+
+        self.restart_sim = rospy.Publisher('/restart_sim', Bool, queue_size=10)
 
         self.rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
+            # CHeck if all items in the deque have at lease one item
             self.publish_markers()
+            if all([len(self.state_histories[i]) > 1 for i in range(self.num_agents)]):
+                self.check_restart_conditions()
             self.rate.sleep()
         
+    def load_config(self):
+        # Load Hydra configurations
+        with initialize(config_path="../../conf"):
+            config = compose(config_name="KL_Cost")
+        return config
 
     def handle_get_state_histories(self, req):
         agent_id = int(req.id)
@@ -98,12 +129,33 @@ class ServerNode:
         self.marker_pub.publish(marker_array)
 
 
-
     def spin(self):
         rospy.spin()
 
     def create_agent_list(self, num_agents, agent_id):
         return [i for i in range(num_agents) if i != agent_id]
+    
+    def check_restart_conditions(self):
+        
+        # Retrieve Goals
+        goals = torch.tensor(self.cfg.multi_agent.goals)
+
+        # Get list of last agent positions from deque
+        agent_positions = torch.tensor([self.state_histories[i][-1][:2] for i in range(self.num_agents)])
+
+        # Check if any agent is within 0.7 units of their goal
+        distances = torch.norm(agent_positions - goals, dim=1)
+
+        # Publish Bools
+        if torch.all(distances < 0.7):
+            self.restart_sim.publish(Bool(data=True))
+        else:
+            self.restart_sim.publish(Bool(data=False))
+
+
+    
+    
+    
 
 
 if __name__ == "__main__":
