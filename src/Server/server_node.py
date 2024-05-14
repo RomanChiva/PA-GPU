@@ -50,6 +50,8 @@ class ServerNode:
         self.restart_sim = rospy.Publisher('/restart_sim', Bool, queue_size=10)
 
         self.rate = rospy.Rate(10)
+        self.max_runs = 2
+        self.n_runs = 0
 
         while not rospy.is_shutdown():
             # CHeck if all items in the deque have at lease one item
@@ -148,10 +150,30 @@ class ServerNode:
 
         # Publish Bools
         if torch.all(distances < 0.7):
+            print('HEY HEY HEY')
             self.restart_sim.publish(Bool(data=True))
+            rospy.sleep(2)
+            self.n_runs += 1
+            # Check if the number of runs is greater than the maximum number of runs
+            if self.n_runs == self.max_runs:
+
+                # Sleep for 1 second
+                rospy.sleep(1) # Sleep for 1
+                # Exit Ros
+                 # Kill all ROS nodes
+                os.system('rosnode kill -a')
+                # Signal ROS to shutdown
+                rospy.signal_shutdown('Max runs reached')
+                # Kill the server node
+                rospy.sleep(2)
+                sys.exit(0)
+            else:
+                pass
+
         else:
             self.restart_sim.publish(Bool(data=False))
-
+        
+        
 
     
     

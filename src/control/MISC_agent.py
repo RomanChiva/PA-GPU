@@ -23,7 +23,7 @@ from costfn.KL_agent import ObjectiveLegibility
 from utils.config_store import *
 #from utils.plotter import plot_gmm
 from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
-
+import copy
 
 
 
@@ -48,6 +48,9 @@ class MISC_Agent:
         self.interface.state = torch.tensor(self.cfg.multi_agent.starts[self.agent_id], device=self.cfg.mppi.device).float()
         self.interface.publish_state_to_server()
         rospy.sleep(0.5)
+
+        # Store all the trajectories of the agent
+        self.trajectories = []
         
 
     def load_config(self):
@@ -67,7 +70,8 @@ class MISC_Agent:
         # MISC Variables
         step_num = 0
         computational_time = []
-        plans = []
+        #plans = []
+        
 
         # INITIALIZE LOOP
         while not rospy.is_shutdown():
@@ -106,7 +110,7 @@ class MISC_Agent:
                 end_time = time.time()
                 print('Time: ', end_time - start_time, 's', 'Agent ID: ', self.agent_id)
 
-            plans.append(plan.numpy())
+            #plans.append(plan.numpy())
             if step_num > 0:
                 computational_time.append(end_time - start_time)
             step_num += 1
@@ -134,9 +138,10 @@ class MISC_Agent:
                 
                 computational_time = []
                 self.interface.timesteps = 0
+                self.trajectories.append(copy.deepcopy(self.interface.trajectory))
                 self.interface.trajectory = []
                 step_num = 0
-                self.mppi_planner = MPPI_Wrapper(self.cfg, self.objective)
+                #self.mppi_planner = MPPI_Wrapper(self.cfg, self.objective)
                 
                 # Save a copy of Plans in the plans folder
                 #print(np.array(plans).shape, 'plans shape')
@@ -147,7 +152,7 @@ class MISC_Agent:
                 #break
                 #sys.exit(0)
                 # Sleep for 1 second
-                rospy.sleep(1)
+                rospy.sleep(0.5)
 
 
 
@@ -158,4 +163,5 @@ if __name__ == '__main__':
         planner.run_agent()
 
     except rospy.ROSInterruptException:
+        print(planner.trajectories)
         pass

@@ -118,7 +118,7 @@ class AgentInterfacePlus:
         # Convert to specified shape
         state_histories = state_histories.view(torch.Size(shape_list))
 
-        return state_histories
+        return state_histories.to(self.cfg.mppi.device)
 
 
 

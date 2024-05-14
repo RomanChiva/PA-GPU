@@ -7,5 +7,5 @@ monte_carlo_samples: 100
 #alpha_max: 0
 KL_weight: 0.5
 safety_radius: 2
-collision_cost: 10 # A high collision cost -> Constraint is enforced
+collision_cost: 100 # A high collision cost -> Constraint is enforced
 rationality: 1
