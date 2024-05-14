@@ -13,7 +13,16 @@ add_message_files(
   FILES
   Obstacle.msg
   ObstacleArray.msg
+  AgentState.msg
+  Tensor3D.msg
 )
+
+
+add_service_files(
+  FILES
+  ServerRequest.srv
+)
+
 
 generate_messages(
   DEPENDENCIES

@@ -3,9 +3,9 @@ defaults:
 
 mppi_mode: "simple"  # halton-spline, simple
 sampling_method: "random"   # halton, random
-num_samples: 5000
+num_samples: 800
 horizon: 20                 # At least 12 for Halton Sampling
-device: "cuda"
+device: "cpu"
 lambda_: 0.5  # Invesrse temperature
 u_min: [0, -1.3]
 u_max: [1.6, 1.3]

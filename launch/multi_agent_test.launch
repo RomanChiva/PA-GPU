@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Debug Info -->
+    <arg name="debug" default="false" />
+    <arg unless="$(arg debug)" name="launch_prefix" value="" />
+    <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+    <arg name="debug_config_parameter" default="false"/>
+    <arg name="debug_kinematic_cal" default="false"/>
+    <arg name="debug_collision_detection" default="false"/>
+    <!-- GUI -->
+    <arg name="gui" default="false" />
+
+    <!-- Launch the parameter server node and pass n_agents-->
+    
+    <node pkg="Experiments" type="server_node.py" name="server_node" output="screen">
+        <param name="num_agents" value="3" /> <param name="memory" value="10" />
+    </node>
+   
+
+
+    
+    
+    <node pkg="Experiments" type="MISC_agent.py" name="MISC_agent0" output='screen'>
+    <param name="agent_id" value="0" private="true"/>
+    </node>
+    
+    
+    <node pkg="Experiments" type="MISC_agent.py" name="MISC_agent1" output='screen'>
+    <param name="agent_id" value="1" private="true"/>
+    </node>
+
+    <node pkg="Experiments" type="MISC_agent.py" name="MISC_agent2" output='screen'>
+    <param name="agent_id" value="2" private="true"/>
+    </node>
+    
+   
+      
+    <!-- configured rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find Experiments)/rviz/RVIZ_MA.rviz" output="log"/>
+    
+
+</launch>

@@ -90,6 +90,8 @@ class MPPIConfig(object):
     filter_u: bool = False
     use_priors: bool = False
     compute_cost_once: bool = False
+    warm_start: bool = False
+    warm_start_steps: int = 5
 
 class MPPIPlanner(ABC):
     """

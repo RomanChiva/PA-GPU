@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from mppi_torch.mppi_torch.mppi import MPPIConfig
+from mppi_torch.mppi import MPPIConfig
 from hydra.core.config_store import ConfigStore
 
 from typing import List, Optional
@@ -27,7 +27,11 @@ class costFn:
     goals = [[20, -5], [20, 5]]
     
     
+@dataclass
+class multi_agent: 
 
+    starts: List[List[float]]
+    goals: List[List[float]]
 
 @dataclass
 class ExampleConfig:
@@ -36,6 +40,7 @@ class ExampleConfig:
     mppi: MPPIConfig
     obstacles: ObstaclesConfig
     costfn: costFn
+    multi_agent: multi_agent
     goal: List[float]
     v_ref: float
     nx: int
