@@ -9,23 +9,24 @@ from PredicionModels.RationalAction import RationalAction
 from PredicionModels.ConstantVel import Constant_velocity_prediction
 from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
 import time
+import sys
 
 class ObjectiveLegibility(object):
 
     def __init__(self, cfg, obstacles, interface, ID):
         # Create two possible goals used in pred_model
         self.cfg = cfg
-        self.goal_index = ID
+        self.ID = ID
+        self.goal = torch.tensor(self.cfg.multi_agent.goals, device=self.cfg.mppi.device).float()[ID]
         self.goals = torch.tensor(self.cfg.multi_agent.goals, device=self.cfg.mppi.device).float()
         self.interface = interface
-        
-
+        self.remove_ego_position_goal()
     
 
     # Cost Function for free navigation (Straight to goal)
     def compute_cost(self, state):
        
-        
+       
          ## Send all tensors we need to GPU
         self.trajectory = torch.tensor(self.interface.trajectory, device=self.cfg.mppi.device)
         self.position = self.trajectory[-1]
@@ -39,25 +40,29 @@ class ObjectiveLegibility(object):
         ## Goal Cost
         goal_cost = self.goal_cost(state) 
         obstacle_cost = self.obstacle_cost(state)
+        
         obstacle_cost = obstacle_cost.reshape(-1)
 
         # KL Cost
-        #KL = self.KL_Cost(state)
-        #KL = KL.reshape(-1)
+        KL = self.KL_Cost(state)
+        
+        KL = KL.reshape(-1)
         # Clamp KL to always be below the maximum value from goal cost
-        #KL = torch.clamp(KL, 0, torch.max(goal_cost))
+        KL = torch.clamp(KL, 0, torch.max(goal_cost))
      
 
-        # Add them
-        return goal_cost + obstacle_cost# + self.cfg.costfn.KL_weight*KL
+        # Add them#
+        
+        return goal_cost + self.cfg.costfn.KL_weight*KL +  obstacle_cost 
 
     def goal_cost(self, state):
 
         state_goal = state.permute(1, 0, 2)
+        
         # Now reshape to (T*K, nx)
         state_goal = state_goal.reshape(-1, self.cfg.nx)
         pos_goal = state_goal[:, 0:2]
-        goal_cost = torch.linalg.norm(pos_goal - self.goals[self.goal_index], axis=1)
+        goal_cost = torch.linalg.norm(pos_goal - self.goal, axis=1)
 
         return goal_cost
     
@@ -67,8 +72,8 @@ class ObjectiveLegibility(object):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2]
-        prediction, weights = goal_oriented_predictions(self.goals, self.trajectory, self.psi, self.cfg)
-        print(prediction.shape, weights.shape, plan_means.shape)
+        prediction, weights = Constant_velocity_prediction(self.interface,self.cfg)
+        #prediction, weights = Constant_velocity_prediction(self.interface, self.cfg)
         # Generate Samples
         samples = GenerateSamplesReparametrizationTrick(plan_means, self.cfg.costfn.sigma_plan, self.cfg.costfn.monte_carlo_samples)
         
@@ -77,8 +82,9 @@ class ObjectiveLegibility(object):
         score_plan = multivariate_normal_log_prob(samples, plan_means, self.cfg.costfn.sigma_plan)
         # Compute KL Divergence
         kl_div = torch.mean(score_plan - score_pred, dim=0)
-
+        
         kl_div = kl_div.permute(1, 0)
+        #sys.exit()
         
         return kl_div
 
@@ -146,7 +152,8 @@ class ObjectiveLegibility(object):
 
     def propagate_positions_constant_v(self, state_tensor, K):
 
-        timestep = 0.2
+        timestep = 1/self.cfg.freq_prop 
+        
 
         if state_tensor is None:
             return torch.zeros((K, 1, 2), device=self.cfg.mppi.device)
@@ -165,7 +172,22 @@ class ObjectiveLegibility(object):
         # Create the propagated states tensor by stacking the new X, Y, and the constant theta and V
         propagated_states = torch.stack([X_new, Y_new], dim=-1)
 
-       
+        print(propagated_states.shape, 'shape_prop_states')
         return propagated_states
+    
+
+    def remove_ego_position_goal(self):
+
+        # Find index of goal closest to where we started
+        start_pos = torch.tensor(self.cfg.multi_agent.starts, device=self.goals.device)[self.ID]
+        
+        relative = self.goals - start_pos[:2]
+        distance = torch.linalg.norm(relative, dim=1)
+        ID = torch.argmin(distance)
+        # Create a tensor of indices excluding the ID
+        indices = torch.cat((torch.arange(ID, device=self.goals.device), torch.arange(ID+1, len(self.goals), device=self.goals.device)))
+        # Select the elements at the indices from the goals tensor
+        self.goals = torch.index_select(self.goals, 0, indices)
+        
 
     

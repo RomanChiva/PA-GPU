@@ -13,7 +13,7 @@
     <!-- Launch the parameter server node and pass n_agents-->
     
     <node pkg="Experiments" type="server_node.py" name="server_node" output="screen">
-        <param name="num_agents" value="3" /> <param name="memory" value="10" />
+        <param name="num_agents" value="2" /> <param name="memory" value="10" />
     </node>
    
 
@@ -29,9 +29,7 @@
     <param name="agent_id" value="1" private="true"/>
     </node>
 
-    <node pkg="Experiments" type="MISC_agent.py" name="MISC_agent2" output='screen'>
-    <param name="agent_id" value="2" private="true"/>
-    </node>
+    
     
    
       

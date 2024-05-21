@@ -49,8 +49,8 @@ class ServerNode:
 
         self.restart_sim = rospy.Publisher('/restart_sim', Bool, queue_size=10)
 
-        self.rate = rospy.Rate(10)
-        self.max_runs = 2
+        self.rate = rospy.Rate(self.cfg.freq_update)
+        self.max_runs = 80
         self.n_runs = 0
 
         while not rospy.is_shutdown():
@@ -70,10 +70,11 @@ class ServerNode:
         agent_id = int(req.id)
         # Index List
         agent_list = self.create_agent_list(self.num_agents, agent_id)
-
+        
         # Create a 3D tensor of the last item of each state history 
         state_histories = torch.tensor([self.state_histories[i][-1] for i in agent_list], dtype=torch.float32)
         # Get shape of tensor and convert to integer list
+       
         shape = list(state_histories.shape)
         
         # Flatten Tensor (Shape is 3D)
@@ -152,7 +153,7 @@ class ServerNode:
         if torch.all(distances < 0.7):
             print('HEY HEY HEY')
             self.restart_sim.publish(Bool(data=True))
-            rospy.sleep(2)
+            rospy.sleep(2) 
             self.n_runs += 1
             # Check if the number of runs is greater than the maximum number of runs
             if self.n_runs == self.max_runs:

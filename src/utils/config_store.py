@@ -46,6 +46,9 @@ class ExampleConfig:
     nx: int
     actors: List[str]
     initial_actor_positions: List[List[float]]
+    freq_plan: int
+    freq_prop: int
+    freq_update: int
 
 
 cs = ConfigStore.instance()

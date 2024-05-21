@@ -588,7 +588,7 @@ class MPPIPlanner(ABC):
         
         # Action perturbation cost
         perturbation_cost = torch.sum(self.U * action_cost, dim=(1, 2))
-        #self.cost_total += perturbation_cost
+        self.cost_total += perturbation_cost
         return self.cost_total
 
     def _compute_total_cost_batch_halton(self):

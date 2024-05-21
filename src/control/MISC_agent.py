@@ -12,7 +12,7 @@ import rospy
 from tf.transformations import euler_from_quaternion
 import numpy as np
 import time
-from planner.MPPI_wrapper import MPPI_Wrapper
+from planner.MPPI_Agent import MPPI_Wrapper
 from hydra.experimental import initialize, compose
 import torch
 from omegaconf import OmegaConf
@@ -38,7 +38,7 @@ class MISC_Agent:
         self.agent_id = self.interface.ID
         print('Hello from Agent: ', self.agent_id)
         
-        rospy.sleep(1)
+        rospy.sleep(0.5)
         
         self.objective = ObjectiveLegibility(self.cfg, None, self.interface, self.agent_id)
         self.mppi_planner = MPPI_Wrapper(self.cfg, self.objective)
@@ -47,7 +47,7 @@ class MISC_Agent:
         self.state = torch.tensor(self.cfg.multi_agent.starts[self.agent_id], device=self.cfg.mppi.device).float()
         self.interface.state = torch.tensor(self.cfg.multi_agent.starts[self.agent_id], device=self.cfg.mppi.device).float()
         self.interface.publish_state_to_server()
-        rospy.sleep(0.5)
+        rospy.sleep(1)
 
         # Store all the trajectories of the agent
         self.trajectories = []
@@ -63,7 +63,17 @@ class MISC_Agent:
     def actuate(self, next_state):
         # Actuate the robot by updating the state
         # Tae a shortcut and just update the state disrectly to be the first from the plan
-        self.state = next_state
+        # Take difference between state and next state
+        
+        delta = next_state[:3] - self.state[:3]
+        # Adjust ratio to match timestep
+        ratio = self.cfg.freq_prop/self.cfg.freq_plan
+
+        self.state[:3] += delta*ratio
+        delta_v = self.state[-1]+ratio*(next_state[-1] - self.state[-1])
+        self.state[-1] = torch.clamp(delta_v, max=self.cfg.mppi.u_max[0])
+        self.interface.rate.sleep()
+
 
     def run_agent(self):
        
@@ -79,6 +89,7 @@ class MISC_Agent:
             
             # Get self.state and turn the torch tensor to a list
             robot_position = self.state.tolist()
+            #robot_position[3] = 0
             
             
             

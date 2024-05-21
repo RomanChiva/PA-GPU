@@ -10,6 +10,12 @@ render: true
 n_steps: 1000
 nx: 4
 
+# Simulation Time Parameters
+
+freq_plan: 10 # Hz How often we do a planning cycle and actuate
+freq_prop: 5 # Defines timestep size when propagating trajectory horizon ()defines length of horizon
+freq_update: 10 # How often the server updates positions , checks completion and updates Rviz positions of the agents  
+
 
 actors: ['jackal']
 initial_actor_positions: [[0.0, 0.0, 0.05]]

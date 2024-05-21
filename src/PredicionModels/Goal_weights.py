@@ -1,7 +1,7 @@
 import torch
 from PredicionModels.utils import *
 
-def Compute_Weights_Goals(pos, goals, traj):
+def Compute_Weights_Goals(pos, goals, traj, cfg):
     pos = pos.permute(1,0,2)
 
     # Initialize a list to store the weights for each goal
@@ -15,8 +15,10 @@ def Compute_Weights_Goals(pos, goals, traj):
     # Add length of path so far to path_lengths
     path_lengths = path_lengths + distance
 
+    weights = [0.9,0.1]
+
     # Loop over each goal
-    for goal in goals:
+    for i, goal in enumerate(goals):
         # Find vector to goal
         vector_goal = goal - pos
 
@@ -28,11 +30,13 @@ def Compute_Weights_Goals(pos, goals, traj):
 
         # Compute weight
         # Raationality parameter 
-        r = 1
+        r = cfg.costfn.rationality
         weight = torch.exp(r*(V_g_0 - path_lengths - magnitude_goal))
-
+        
         # Add weight to list
-        weights_list.append(weight)
+        #weights_list.append(weight)
+        weights_list.append(torch.full_like(weight, weights[i], device=weight.device))
+
 
     # Stack the weights along a new dimension
     weights = torch.stack(weights_list, dim=2)

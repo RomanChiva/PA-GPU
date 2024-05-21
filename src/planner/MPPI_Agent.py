@@ -60,7 +60,7 @@ class MPPI_Wrapper(object):
         # state is already saved in the simulator itself, so we ignore it. Note: t is an unused step dependent
         # dynamics variable
 
-        t = 0.2
+        t = 1/self.cfg.freq_prop
         v = u[:, 0]
         w = u[:, 1]
         psi = old_state[:, 2]
@@ -82,12 +82,13 @@ class MPPI_Wrapper(object):
         return self.objective.compute_cost(state)
 
     def compute_action(self, q, qdot, obst=None, obst_tensor=None):
-        self.state_place_holder = torch.tensor(q * self.cfg.mppi.num_samples).view(self.cfg.mppi.num_samples, -1)
+        
+        self.state_place_holder = torch.tensor(q * self.cfg.mppi.num_samples, device=self.cfg.mppi.device).view(self.cfg.mppi.num_samples, -1)
         actions, states = self.mppi.command(self.state_place_holder)
         
-        actions = actions.cpu()
         # loop over the actions and forward propagate the dynamics to get the trajectory
         old_state = self.state_place_holder[0, :].unsqueeze(0)
+        
         traj = []
         for i in range(actions.size(0)):
             element = actions[i, :]

@@ -4,19 +4,19 @@ import torch
 
 def Constant_velocity_prediction(interface, cfg):
 
-    v = 1
-    timestep = 0.2
+    v = 1#interface.state[3]
+    timestep = 1/cfg.freq_prop
 
     # Get position XY and make it tensor
-    position =  torch.tensor(interface.state[0:2], device=cfg.mppi.device)
-    psi = torch.tensor(interface.state[2])
+    position =  interface.state[0:2]
+    psi = interface.state[2]
 
     displacement = torch.tensor([timestep * v * torch.cos(psi),
                                   timestep * v * torch.sin(psi)], device=cfg.mppi.device)
 
     # Repeat displacement horizon times and multiply horizon index at each timestep
     displacement = displacement.repeat(cfg.mppi.horizon, 1)
-    displacement = displacement * torch.arange(1,cfg.mppi.horizon+1).unsqueeze(-1).float()
+    displacement = displacement * torch.arange(1,cfg.mppi.horizon+1, device=cfg.mppi.device).unsqueeze(-1).float()
 
     # Add displacement to position
     pred_goals = position + displacement

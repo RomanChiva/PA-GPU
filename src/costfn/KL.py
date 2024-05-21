@@ -40,7 +40,7 @@ class ObjectiveLegibility(object):
         # The function already picks a device
         self.obstacle_predictions = self.propagate_positions(obstacles, self.cfg.mppi.horizon)
 
-
+       
 
         ## The state coming in is a tensor with all the different trajectory samples
         ## Goal Cost
@@ -53,6 +53,8 @@ class ObjectiveLegibility(object):
         KL = KL.reshape(-1)
         # Clamp KL to always be below the maximum value from goal cost
         KL = torch.clamp(KL, 0, torch.max(goal_cost))
+        print('Max Goal:', torch.max(goal_cost))
+        print('Max KL', torch.max(0.7*KL))
      
 
         # Add them
@@ -74,7 +76,7 @@ class ObjectiveLegibility(object):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2]
-        prediction, weights = goal_oriented_predictions(self.goals, self.trajectory, self.psi, self.cfg)
+        prediction, weights = RationalAction(state, self.goals, self.trajectory, self.cfg)
 
         # Generate Samples
         samples = GenerateSamplesReparametrizationTrick(plan_means, self.cfg.costfn.sigma_plan, self.cfg.costfn.monte_carlo_samples)
@@ -95,7 +97,7 @@ class ObjectiveLegibility(object):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2] # Get only the positions from state    
-        prediction, weights = RationalAction(state, self.interface, self.cfg)
+        prediction, weights = goal_oriented_predictions(self.goals, self.interface, self.cfg)
         # Generate Samples
 
         samples_pred = GenerateSamples(prediction, self.cfg.costfn.sigma_pred, weights, self.cfg.costfn.monte_carlo_samples)

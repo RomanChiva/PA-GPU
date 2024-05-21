@@ -130,23 +130,24 @@ def multivariate_normal_log_prob(x, means, sigma):
 
 def observer_weights_current(traj, cfg, goals):
     
-    # Get position XY and make it tensor
 
     # Find distance to goals
     distance_goals = torch.norm(goals - traj[-1], dim=-1)
 
     distance_path = compute_path_length(traj)
+    
 
-    # Find magnitude of goals from [0,0]
-    V_g = torch.norm(goals, dim=-1)
+    # Find magnitude of goals from initial position
+    relative = goals - traj[0]
+    V_g = torch.norm(relative, dim=-1)
 
     # Compute weights
     weights = torch.exp(cfg.costfn.rationality*(V_g - distance_path - distance_goals))
     
     # Normalize the weights
     weights = weights / weights.sum()
-
-    #weights = torch.tensor([0, 1])
+    
+    weights = torch.tensor([0.5, 0.5], device=traj.device)
 
     return weights
 

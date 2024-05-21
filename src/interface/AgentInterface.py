@@ -80,7 +80,7 @@ class AgentInterfacePlus:
         
 
         # Set the rate at which to publish commands (in Hz)
-        self.frequency = 10
+        self.frequency = self.cfg.freq_plan
         self.rate = rospy.Rate(self.frequency)  # 10 Hz
 
         self.timesteps = 0
@@ -94,7 +94,7 @@ class AgentInterfacePlus:
        
         agent_state.id = self.ID
         #print(self.ID, 'Publishing State')
-        agent_state.state = self.state.tolist()
+        agent_state.state = self.state.cpu().tolist()
         # Publish the state to the server
         self.state_publisher.publish(agent_state)
         
