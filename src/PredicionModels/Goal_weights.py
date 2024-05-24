@@ -15,7 +15,6 @@ def Compute_Weights_Goals(pos, goals, traj, cfg):
     # Add length of path so far to path_lengths
     path_lengths = path_lengths + distance
 
-    weights = [0.9,0.1]
 
     # Loop over each goal
     for i, goal in enumerate(goals):
@@ -34,8 +33,10 @@ def Compute_Weights_Goals(pos, goals, traj, cfg):
         weight = torch.exp(r*(V_g_0 - path_lengths - magnitude_goal))
         
         # Add weight to list
-        #weights_list.append(weight)
-        weights_list.append(torch.full_like(weight, weights[i], device=weight.device))
+        if cfg.costfn.fixed_weights == None:
+            weights_list.append(weight)
+        else:
+            weights_list.append(torch.full_like(weight, cfg.costfn.fixed_weights[i], device=weight.device))
 
 
     # Stack the weights along a new dimension

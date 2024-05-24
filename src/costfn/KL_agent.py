@@ -8,6 +8,8 @@ from PredicionModels.utils import *
 from PredicionModels.RationalAction import RationalAction
 from PredicionModels.ConstantVel import Constant_velocity_prediction
 from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
+from PredicionModels.local_collision_avoidance import local_collision_avoidance
+from PredicionModels.AnglePredictions import Angle_prediction
 import time
 import sys
 
@@ -29,12 +31,13 @@ class ObjectiveLegibility(object):
        
          ## Send all tensors we need to GPU
         self.trajectory = torch.tensor(self.interface.trajectory, device=self.cfg.mppi.device)
-        self.position = self.trajectory[-1]
+        self.current_state = self.interface.state.to(self.cfg.mppi.device)
         self.psi = self.interface.state[2].to(self.cfg.mppi.device)#torch.tensor(self.interface.state[2], device=self.cfg.mppi.device)
         obstacles = self.interface.get_state_histories()
         
         # The function already picks a device
         self.obstacle_predictions = self.propagate_positions_constant_v(obstacles, self.cfg.mppi.horizon)
+        
         
         ## The state coming in is a tensor with all the different trajectory samples
         ## Goal Cost
@@ -44,16 +47,15 @@ class ObjectiveLegibility(object):
         obstacle_cost = obstacle_cost.reshape(-1)
 
         # KL Cost
-        KL = self.KL_Cost(state)
+        KL = self.KL_Angle_Cost(state)
         
         KL = KL.reshape(-1)
         # Clamp KL to always be below the maximum value from goal cost
         KL = torch.clamp(KL, 0, torch.max(goal_cost))
      
-
         # Add them#
         
-        return goal_cost + self.cfg.costfn.KL_weight*KL +  obstacle_cost 
+        return goal_cost  +  obstacle_cost + self.cfg.costfn.KL_weight*KL
 
     def goal_cost(self, state):
 
@@ -72,7 +74,8 @@ class ObjectiveLegibility(object):
 
         ## Specify Distributions
         plan_means = state[:, :, 0:2]
-        prediction, weights = Constant_velocity_prediction(self.interface,self.cfg)
+        prediction, weights = local_collision_avoidance(self.current_state, self.goal,self.obstacle_predictions, self.cfg, pred_type='position')
+        print(prediction.shape, weights.shape)
         #prediction, weights = Constant_velocity_prediction(self.interface, self.cfg)
         # Generate Samples
         samples = GenerateSamplesReparametrizationTrick(plan_means, self.cfg.costfn.sigma_plan, self.cfg.costfn.monte_carlo_samples)
@@ -110,6 +113,27 @@ class ObjectiveLegibility(object):
         return kl_div
     
     # Reverse Order
+
+    def KL_Angle_Cost(self, state):
+
+        ## POSSIBBLE ISSUE AT EDGES (-pi, pi) -> Look into it!!!
+        ## Problem with setting weights too!
+        ## Specify Distributions
+        plan_means = state[:, :, 2].unsqueeze(-1)
+        prediction, weights = Angle_prediction(state, self.current_state[:2], self.trajectory, self.psi, self.goals, self.cfg, mode='iterative', angle_limits = False)
+        # Generate Sample
+        samples = GenerateSamplesReparametrizationTrick(plan_means, self.cfg.costfn.sigma_plan, self.cfg.costfn.monte_carlo_samples)
+        # Score (LOG PROBABILITY)
+        score_pred = score_GMM(samples, prediction, self.cfg.costfn.sigma_pred, weights)
+        # FInd mean for entire score_pred tensor
+        # Print Max score_pred
+        score_plan = multivariate_normal_log_prob(samples, plan_means, self.cfg.costfn.sigma_plan)
+        # Compute KL Divergence
+        difference = score_plan - score_pred
+        kl_div = torch.mean(difference, dim=0)
+        kl_div = kl_div.permute(1, 0)
+
+        return kl_div
     
     def obstacle_cost(self, state):
         
@@ -172,7 +196,7 @@ class ObjectiveLegibility(object):
         # Create the propagated states tensor by stacking the new X, Y, and the constant theta and V
         propagated_states = torch.stack([X_new, Y_new], dim=-1)
 
-        print(propagated_states.shape, 'shape_prop_states')
+        
         return propagated_states
     
 

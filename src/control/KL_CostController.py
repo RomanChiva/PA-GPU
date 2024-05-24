@@ -23,7 +23,8 @@ from costfn.KL import ObjectiveLegibility
 from utils.config_store import *
 #from utils.plotter import plot_gmm
 from PredicionModels.GoalOrientedPredictions import goal_oriented_predictions
-
+import copy
+import pickle
 
 class Planner_Legibility:
 
@@ -48,7 +49,22 @@ class Planner_Legibility:
         # MISC Variables
         step_num = 0
         computational_time = []
+
+        run_history = {'cfg': self.cfg, 
+                       'samples':[], 
+                       'plans':[], 
+                       'traj':[], 
+                       'step_cost':[], 
+                       'step_cost_matrix':[]}
+        
+
+        # Intermediate Lists
         plans = []
+        costs = []
+        samples = []
+
+        ## N Runs
+        n_runs = 2
 
         # INITIALIZE LOOP
         while not rospy.is_shutdown():
@@ -106,35 +122,65 @@ class Planner_Legibility:
                     print('Time: ', end_time - start_time, 's')
 
                 plans.append(plan.numpy())
+                samples.append(states.numpy())
+
                 if step_num > 0:
                     computational_time.append(end_time - start_time)
                 step_num += 1
                 self.interface.timesteps += 1
                 # visualize trajectory
                 self.interface.visualize_trajectory(plan)
+             
+
                 # Plot Plan and predictions 
                 #pred, weights = goal_oriented_predictions(self.interface, self.cfg, return_original=True)
                 #print(pred.shape, weights.shape, plan.shape)
                 #if step_num % 50 == 0:
                     #plot_gmm(pred, self.cfg.costfn.sigma_pred, weights, trajectory=plan)
                 # actuate robot and sleep
+                ## COMPUTE COST OF PLAN
+
+                plan_expanded = plan.unsqueeze(0)
+                cost = self.objective.compute_cost(plan_expanded, one_shot=True)
+                costs.append(cost)
                 self.interface.actuate(action)
 
                 # check if the target goal is reached
-                if np.linalg.norm(np.array(robot_position[0:2]) - np.array(self.cfg.costfn.goals[self.cfg.costfn.goal_index])) < 0.7:
+                if np.linalg.norm(np.array(robot_position[0:2]) - np.array(self.cfg.costfn.goals[self.cfg.costfn.goal_index])) < 0.7 and step_num > 10:
                     self.interface.reset_env()
                     print("planning computational time is: ", (np.sum(computational_time) / step_num) * 1000, " ms")
+                    
+                    # Save Data Of Interest (As a deepcopy)
+                    run_history['samples'].append(copy.deepcopy(samples))
+                    run_history['plans'].append(copy.deepcopy(plans))
+                    run_history['traj'].append(copy.deepcopy(self.interface.trajectory))
+                    run_history['step_cost'].append(copy.deepcopy(costs))
+                    run_history['step_cost_matrix'].append(copy.deepcopy(self.interface.step_cost_matrix))
+                    # Reset Variables
+                    samples = []
+                    plans = []
                     computational_time = []
                     self.interface.timesteps = 0
                     self.interface.trajectory = []
+                    self.interface.step_cost_matrix = []
+                    costs = []
+
                     step_num = 0
                     self.mppi_planner = MPPI_Wrapper(self.cfg, self.objective)
-                    # Save a copy of Plans in the plans folder
-                    #print(np.array(plans).shape, 'plans shape')
-                    #np.save('/home/roman/ROS/catkin_ws/src/Experiments/src/utils/plans_KL2.npy', np.array(plans))
-                    plans = []
-                    #break
-                    #sys.exit(0)
+
+                    n_runs -= 1
+
+                    if n_runs == 0:
+                        # Save Data
+                       folder = parent_dir + '/DataCollection/raw_data/'
+                       name = 'FW_73_G_20_20.pkl'
+                       with open(folder + name, 'wb') as f:
+                            pickle.dump(run_history, f)
+
+                       sys.exit(0)
+                            
+        
+                   
 
 
 

@@ -312,16 +312,22 @@ class MPPIPlanner(ABC):
             
             self.U = torch.roll(self.U, -1, dims=0)
             cost_total = self._compute_total_cost_batch_simple()
-            
-            
+           # Compute how many values above 0.0001
+
             beta = torch.min(cost_total)
 
 
             self.cost_total_non_zero = _ensure_non_zero(cost_total, beta, 1 / self.lambda_)
+            
+            # Print the ten highest values in the array
+            
 
             eta = torch.sum(self.cost_total_non_zero)
             
             self.omega = (1. / eta) * self.cost_total_non_zero
+            
+            top_values, top_idx = torch.topk(self.omega, 10)
+            
             
             self.U += torch.sum(self.omega.view(-1, 1, 1) * self.noise, dim=0)
             action = self.U

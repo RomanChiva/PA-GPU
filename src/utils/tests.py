@@ -1,71 +1,39 @@
-import torch
-import time
-
-
-
+from scipy.stats import norm
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.stats import multivariate_normal
 
+def gaussian_pdf(x, mean, std_dev):
+    """
+    This function returns the likelihood of a point under a Gaussian distribution.
 
-def plot_gmm(means, sigma, weights):
-    # Create a grid of points
-    x = np.linspace(-5, 20, 100)
-    y = np.linspace(-5, 20, 100)
-    X, Y = np.meshgrid(x, y)
+    Parameters:
+    x (float): The point to evaluate.
+    mean (float): The mean of the Gaussian distribution.
+    std_dev (float): The standard deviation of the Gaussian distribution.
 
-    covs = [np.eye(2) * sigma for _ in means]
-  
-    Z = np.zeros_like(X)
-
-    for i, weight in enumerate(weights):
-        means_i = means[:,i,:]
-        for mean, cov in zip(means_i, covs):
-            rv = multivariate_normal(mean=mean, cov=cov)
-            Z += weight * rv.pdf(np.dstack((X, Y)))
-
-
-    # Create a 3D plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Plot the GMM as a surface plot
-    ax.plot_surface(X, Y, Z, cmap='viridis')
-
-    # Set the vertical axis to 1
-    ax.set_zlim(0, 1)
-
-    # Show the plot
-    plt.show()
+    Returns:
+    float: The likelihood of x under the Gaussian distribution.
+    """
+    return norm.pdf(x, loc=mean, scale=std_dev)
 
 
 
+## GMM TESTS
 
-num_steps = 20
+x = 3
+weights = [0.3, 0.7]
+
+mode1 = gaussian_pdf(x, -0.5, 0.2)
+mode2 = gaussian_pdf(x, 0.5, 0.2) 
+res = weights[0] * mode1 + weights[1] * mode2
+print(res)
+log_res = np.log(res)
+ego = gaussian_pdf(x, x, 0.1)
+print(ego)
+log_ego = np.log(ego)
+
+print(log_res, log_ego)
+
+KL = log_ego - log_res
+print(KL)
 
 
-# Define the start, end, and number of steps
-start = np.array([0.5, 0.5])
-end = np.array([10, 10])
-
-
-# Create a trajectory from start to end
-trajectory1 = np.linspace(start, end, num_steps)
-
-start2 = np.array([0, 0.5])
-end2 = np.array([0, 10])
-
-
-# Create a trajectory from start to end
-trajectory2 = np.linspace(start2, end2, num_steps)
-
-# Comnbine both trajectories in a new dimension to make tarray shape 20x2x2
-trajectory = np.stack([trajectory1, trajectory2], axis=1)
-
-# Define the parameters of the two Gaussian components
-means = trajectory1
-sigma = 2
-weights = [1]
-
-plot_gmm(means, sigma, weights)

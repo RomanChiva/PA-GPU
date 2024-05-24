@@ -107,6 +107,11 @@ class JackalInterfacePlus:
         self.trajectory = []
         self.state =None
 
+        # Store Cost Data
+        self.step_cost_matrix = []
+        
+        
+
 
 
     def visualize_spline(self):

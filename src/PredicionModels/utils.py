@@ -36,7 +36,7 @@ def GenerateSamplesReparametrizationTrick(means, sigma, n_samples):
 
     # Expand the means tensor to match the number of samples
     expanded_means = means.unsqueeze(0).expand(n_samples, -1, -1, -1)
-
+    
     # Sample noise from a standard normal distribution
     noise = torch.randn_like(expanded_means)
 
@@ -96,12 +96,15 @@ def score_GMM(samples, means, covariance, weights):
 
 
     scores = [multivariate_normal_log_prob(samples, means[i], covariance) for i in range(means.shape[0])]
+    
     # Make a tensor 
     scores = torch.stack(scores, dim=-1)
+
     
     weights = weights.unsqueeze(0)
     # Weigh the scores based on the weights tensor
     weighted_score = torch.sum(weights * scores, dim=-1)
+    
 
     # Weigh the scores based on the weights tensor
     #weighted_score = weights[:,:,0] * score1 + weights[:,:,1] * score2
@@ -124,6 +127,8 @@ def multivariate_normal_log_prob(x, means, sigma):
 
     # Sum the log probabilities over the last dimension
     log_prob = torch.sum(exponent + log_det + log_2pi, dim=-1)
+    
+    
 
     return log_prob
 
@@ -133,23 +138,52 @@ def observer_weights_current(traj, cfg, goals):
 
     # Find distance to goals
     distance_goals = torch.norm(goals - traj[-1], dim=-1)
-
     distance_path = compute_path_length(traj)
     
 
     # Find magnitude of goals from initial position
     relative = goals - traj[0]
     V_g = torch.norm(relative, dim=-1)
-
     # Compute weights
     weights = torch.exp(cfg.costfn.rationality*(V_g - distance_path - distance_goals))
-    
     # Normalize the weights
     weights = weights / weights.sum()
     
-    weights = torch.tensor([0.5, 0.5], device=traj.device)
+   
+    if cfg.costfn.fixed_weights != None:
+        weights = torch.tensor(cfg.costfn.fixed_weights, device=traj.device)
 
+    
     return weights
 
 
+
+def straight_path_gen(position, goal, v, t_step, horizon): 
+
+    ## Compute unit vector
+    v = 1.3
+    print(t_step, 'Timestep')
+
+    unit_vector = (goal - position) / torch.norm(goal - position)
+
+    displacement = unit_vector.repeat(horizon,1)
+    displacement = displacement * torch.arange(1,horizon+1, device = displacement.device).unsqueeze(-1).float() * t_step * v
+
+
+    path = position + displacement
+
+    return path
+
+def find_earliest_collision(collision_tensor):
+    # Initialize a tensor to store the earliest collision times
+    earliest_collision = torch.full((collision_tensor.shape[1],), collision_tensor.shape[0], dtype=torch.long, device=collision_tensor.device)
+    # Iterate over agents
+    for i in range(collision_tensor.shape[1]):
+        # Find the indices where there is a collision
+        collision_indices = torch.where(collision_tensor[:, i])
+        # If there is at least one collision
+        if collision_indices[0].nelement() > 0:
+            # Find the earliest collision
+            earliest_collision[i] = torch.min(collision_indices[0])
+    return earliest_collision
 
